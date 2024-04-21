@@ -1,0 +1,10 @@
+apiVersion: v1
+kind: ConfigMap
+metadata:
+  namespace: {{ .Release.Namespace }}
+  name: {{ .Release.Name }}-configmap
+data:
+  nginx.conf.template: |-
+{{ .Files.Get "files/nginx.conf.template" | indent 4 }}
+  nginx.conf: |-
+{{ .Files.Get "files/nginx.conf" | indent 4 }}

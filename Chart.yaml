@@ -1,0 +1,7 @@
+apiVersion: v1
+# Recommendation: Set the name to something that includes the model type
+name: weit-ifm
+description: weit-ifm
+# Recommendation: Set the version and appVersion to the same values as the supplied model image
+version: 1.0.3
+appVersion: "1.0.3"

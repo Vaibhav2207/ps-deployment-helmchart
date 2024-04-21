@@ -1,0 +1,75 @@
+ingress:
+  host: weit-ifm.ps.actimize.services
+  enabled: yes
+  path:
+  tls_enabled: no
+  #tls_secretName: python-tls-niceactimize-secret
+  #tls_secretName: wildcard-nice-tld-cert
+  tls_secretName: app-tls-secret
+  annotations:
+    alb.ingress.kubernetes.io/certificate-arn: arn:aws:acm:us-east-1:666579094788:certificate/cdd336d9-513c-48b8-8865-02190c060bc0
+    alb.ingress.kubernetes.io/listen-ports: '[{"HTTP": 80}, {"HTTPS":443}, {"HTTP":2345},{"HTTP":2346}]'
+    alb.ingress.kubernetes.io/target-type: ip
+    kubernetes.io/ingress.class: alb
+    #field.cattle.io/publicEndpoints: '[{"addresses":[""],"port":80,"protocol":"HTTP","serviceName":"ps-ci:weit-ifm","ingressName":"ps-ci:weit-ifm-ing","hostname":"weit-ifm.ps.actimize.services","path":"/*","allNodes":false}]'
+    #kubectl.kubernetes.io/last-applied-configuration: |
+    #  {"apiVersion":"networking.k8s.io/v1","kind":"Ingress","metadata":{"annotations":{"kubernetes.io/ingress.class":"alb","meta.helm.sh/release-name":"weit-ifm","meta.helm.sh/release-namespace":"ps-ci"},"labels":{"app":"weit-ifm","app.kubernetes.io/managed-by":"Helm","chart":"weit-ifm-1.4.0.1.14","heritage":"Helm","release":"weit-ifm"},"name":"weit-ifm-ing","namespace":"ps-ci"},"spec":{"rules":[{"host":"weit-ifm.ps.actimize.services","http":{"paths":[{"backend":{"service":{"name":"weit-ifm","port":{"number":8080}}},"path":"/*","pathType":"ImplementationSpecific"}]}}]}}
+    
+    #meta.helm.sh/release-name: w-eit
+    #meta.helm.sh/release-namespace: ps-ci
+
+service:
+  defaultServiceType: ClusterIP
+  # The service type to use when routing is not enabled
+  altServiceType: NodePort
+  httpPort: 8080
+  targetHttpPort: 8080
+  httpProtocol: TCP
+  httpName: http
+  httpsPort: 8443
+  targetHttpsPort: 8443
+  httpsProtocol: TCP
+  httpsName: https
+
+deployment:
+  clientName: usb
+  modelName: w-eit
+  productName: ifm
+  # Changing replicaCount affects static scaling
+  replicaCount: 1
+  image:
+    #repository: artifactory.actimize.cloud/docker/models-perf/gs-treasury-o-eit-3-co-2
+    #repository: artifactory.actimize.cloud/docker-dev/professional-services/models/weit-ifm
+    #repository: artifactory.actimize.cloud/docker-dev/professional-services/models/usb/weit-ifm
+    tag: 2403.2.0.1
+    pullPolicy: IfNotPresent
+    imagePullSecrets: []
+    # Note: To use a registry that requires authentication you must:
+    # * Configure a secret in the Kubernetes cluster
+    # * Remove the "[]" from the imagePullSecrets variable and add the following line below it:
+    #      - name: regcred
+    #
+  # Do not modify any of the following lines unless there is a specific reason
+  livenessProbe:
+    tcpSocket:
+      port: 8080
+    initialDelaySeconds: 5
+    periodSeconds: 10
+  readinessProbe:
+    httpGet:
+      path: /healthcheck
+      port: 8080
+    initialDelaySeconds: 15
+    periodSeconds: 10
+  resources:
+    limits:
+      cpu: 4000m
+      memory: 4Gi
+    requests:
+      cpu: 4000m
+      memory: 4Gi
+  nodeSelector: {}
+  affinity: {}
+  tolerations: []
+  env:          
+    MODEL_SERVER_WORKERS: 4

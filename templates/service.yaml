@@ -1,0 +1,38 @@
+apiVersion: v1
+kind: Service
+metadata:
+  name: {{ include "weit-ifm.fullname" . }}
+  namespace: {{ .Release.Namespace }}
+  labels:
+    app: {{ include "weit-ifm.name" . }}
+    chart: {{ include "weit-ifm.chart" . }}
+    release: {{ .Release.Name }}
+    heritage: {{ .Release.Service }}
+    owner: ifm
+    {{- if or (.Values.ingress.enabled)}}
+      {{- if .Values.ingress.tls_enabled }}
+    url_type: https
+      {{- else }}
+    url_type: http
+      {{- end }}
+    url_host: {{ .Values.ingress.host }}
+    url_path: {{ .Values.ingress.path | default "''" }}
+    {{- end }}
+spec:
+  {{- if .Values.ingress.enabled }}
+  type: {{ .Values.service.defaultServiceType }}
+  {{- else }}
+  type: {{ .Values.service.altServiceType }}
+  {{- end }}
+  ports:
+    - port: {{ .Values.service.httpPort }}
+      targetPort: {{ .Values.service.targetHttpPort }}
+      protocol: {{ .Values.service.httpProtocol }}
+      name: {{ .Values.service.httpName }}
+    - port: {{ int .Values.service.httpsPort }}
+      targetPort: {{ int .Values.service.targetHttpsPort }}
+      protocol: {{ .Values.service.httpsProtocol }}
+      name: {{ .Values.service.httpsName }}
+  selector:
+    app: {{ include "weit-ifm.name" . }}
+    release: {{ .Release.Name }}

@@ -1,0 +1,121 @@
+apiVersion: apps/v1
+kind: Deployment
+metadata:
+  name: {{ include "weit-ifm.fullname" . }}
+  namespace: {{ .Release.Namespace }}
+  labels:
+    app: {{ include "weit-ifm.name" . }}
+    chart: {{ include "weit-ifm.chart" . }}
+    release: {{ .Release.Name }}
+    heritage: {{ .Release.Service }}
+spec:
+  replicas: {{ .Values.deployment.replicaCount }}
+  selector:
+    matchLabels:
+      app: {{ include "weit-ifm.name" . }}
+      release: {{ .Release.Name }}
+  template:
+    metadata:
+      labels:
+        app: {{ include "weit-ifm.name" . }}
+        release: {{ .Release.Name }}
+    spec:
+      volumes:
+        - name: {{ .Release.Name }}-configmap-volume
+          configMap:
+            name: {{ .Release.Name }}-configmap
+            items:
+            - key: nginx.conf.template
+              path: nginx.conf.template
+            - key: nginx.conf
+              path: nginx.conf
+        - name: {{ .Release.Name }}-secret-volume
+          secret:
+            secretName: {{ .Release.Name }}-app-tls-secret
+            items:
+            - key: tls.crt
+              path: tls.crt
+            - key: tls.key
+              path: tls.key
+        - name: init-volume
+          emptyDir: {}      
+
+    {{- with .Values.deployment.image.imagePullSecrets }}
+      imagePullSecrets:
+    {{ toYaml . | indent 8 }}
+    {{- end }}
+      initContainers:
+        - name: permission-change
+          image: busybox
+          command: ['sh', '-c', 'set -x; cd /opt/program && ls -lh && cp * /initdisk/ && chmod o+rwx /initdisk/* && ls -lh && chown -R 101:101 /initdisk/']
+          volumeMounts:
+            - name: {{ .Release.Name }}-configmap-volume
+              mountPath: /opt/program/nginx.conf.template
+              subPath: nginx.conf.template
+            - name: {{ .Release.Name }}-configmap-volume
+              mountPath: /opt/program/nginx.conf
+              subPath: nginx.conf
+            - name: {{ .Release.Name }}-secret-volume
+              mountPath: /opt/program/tls.crt
+              subPath: tls.crt 
+            - name: {{ .Release.Name }}-secret-volume
+              mountPath: /opt/program/tls.key
+              subPath: tls.key
+            - name: init-volume
+              mountPath: /initdisk
+      containers:
+        - name: {{ .Chart.Name }}
+          image: "{{ .Values.deployment.image.repository }}:{{ .Values.deployment.image.tag }}"
+          imagePullPolicy: {{ .Values.deployment.image.pullPoilicy }}
+#          lifecycle:
+#            postStart:
+#              exec:
+#                command: 
+#                  - "sh"
+#                  - "-c"
+#                  - >
+#                    if [ -d "/initdisk" ]; then
+#                        ls
+#                        cp -f /initdisk/nginx.conf /opt/program/nginx.conf
+#                        cp -f /initdisk/nginx.conf.template /opt/program/nginx.conf.template
+#                        kill -HUP 1
+#                    fi
+#          volumeMounts:
+#            - name: init-volume
+#              mountPath: /initdisk/nginx.conf.template
+#              subPath: nginx.conf.template
+#            - name: init-volume
+#              mountPath: /initdisk/nginx.conf
+#              subPath: nginx.conf
+#            - name: init-volume
+#              mountPath: /opt/program/tls.crt
+#              subPath: tls.crt
+#            - name: init-volume   
+#              mountPath: /opt/program/tls.key
+#              subPath: tls.key
+
+          ports:
+            - name: http
+              containerPort: 8080
+              protocol: TCP
+            - name: https
+              containerPort: 8443
+              protocol: TCP
+          livenessProbe:
+{{ toYaml .Values.deployment.livenessProbe | indent 12 }}
+          readinessProbe:
+{{ toYaml .Values.deployment.readinessProbe | indent 12 }}
+          resources:
+{{ toYaml .Values.deployment.resources | indent 12 }}
+    {{- with .Values.deployment.nodeSelector }}
+      nodeSelector:
+{{ toYaml . | indent 8 }}
+    {{- end }}
+    {{- with .Values.deployment.affinity }}
+      affinity:
+{{ toYaml . | indent 8 }}
+    {{- end }}
+    {{- with .Values.deployment.tolerations }}
+      tolerations:
+{{ toYaml . | indent 8 }}
+    {{- end }}
